@@ -29,6 +29,7 @@ th{position:sticky;top:0;background:var(--cd);cursor:pointer;font-size:12px;colo
 <div class="g2"><div class="cd"><h2 id="t2"></h2><div class="cv"><canvas id="c2"></canvas></div></div><div class="cd"><h2 id="t3"></h2><div class="cv"><canvas id="c3"></canvas></div></div></div>
 <div class="cd"><h2 id="t5"></h2><div class="cv" style="height:240px"><canvas id="c4"></canvas></div><div class="tw" style="margin-top:10px;max-height:340px"><table style="min-width:560px"><thead><tr><th>月份</th><th>天數</th><th id="mh"></th><th>較上月</th><th>去年同月</th><th>年增減</th></tr></thead><tbody id="mt"></tbody></table></div><div class="mu" style="margin-top:6px">月份＝該月所有週期加總（跨月的週，例如 10/26~11/01，依天數平均分配到兩個月）。「進行中」的月份天數不足，週總量模式下不宜與完整月份直接比，請按右上角切換成日均。去年同月只在兩個月都是完整月份時才比較。</div></div>
 <div class="cd ins"><h2>自動洞察（以目前選取的指標，近 4 週 vs 前 4 週）</h2><div class="g2" id="ins"></div></div>
+<div class="cd ins"><h2>據點診斷（所選週期往前 8 週，點據點可看趨勢）</h2><div class="mu" id="dgn" style="margin-bottom:8px"></div><div class="g2" id="dg"></div></div>
 <div class="cd"><div class="bar" style="margin:0 0 8px"><h2 id="t4" style="margin:0"></h2><div class="ctl"><input type="search" id="q" placeholder="搜尋據點"><select id="rgs"></select></div></div><div class="ctl" id="rc" style="margin-bottom:8px"></div><div class="tw"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -94,6 +95,18 @@ function rng(){const k=st.pr;if(k=='c')return[Math.min(st.ca,st.cb),Math.max(st.
 function rcui(){const[ra,rb]=rng(),n=rb-ra+1,sd=(x,y)=>{let t=0;for(let i=x;i<=y;i++)t+=days[i];return t},P=[['w1','所選週'],['w4','近4週'],['w8','近8週'],['w13','近13週'],['mtd','本月累計'],['ytd','今年累計'],['all','全部'],['c','自訂']],wo=s=>W.map((w,i)=>'<option value="'+i+'"'+(i==s?' selected':'')+'>'+dy(ts[i][0])+'~'+dy(ts[i][1]).slice(5)+'</option>').join(''),yi=yoA(T[0],[...Array(n)].map((_,k)=>ra+k));
  $('#t4').textContent='據點明細 · '+MS[st.m]+'（'+(st.mode=='day'?'日均':n==1?'週總量':'區間總量')+'）';
  $('#rc').innerHTML=P.map(p=>'<button data-pr="'+p[0]+'"'+(st.pr==p[0]?' class="on"':'')+'>'+p[1]+'</button>').join('')+(st.pr=='c'?'<select id="ra">'+wo(ra)+'</select> 至 <select id="rb">'+wo(rb)+'</select>':'')+'<span class="mu">區間 '+dy(ts[ra][0])+' ~ '+dy(ts[rb][1])+'（'+sd(ra,rb)+' 天、'+n+' 週）；前一期＝緊接在前的同樣 '+n+' 週'+(ra-n>=0?'（'+sd(ra-n,ra-1)+' 天）':'（無資料）')+'；去年同期＝去年相同日期'+(yi==null?'（無資料）':'')+'</span>'}
+function diag(){const n=8,E=L,S=Math.max(E-n+1,0),P0=Math.max(S-n,0),sm=(c,m,a,b)=>{let t=0;for(let i=a;i<=b;i++)t+=c.d[m][i];return t},dd=(a,b)=>{let t=0;for(let i=a;i<=b;i++)t+=days[i];return t||1},sT=(m,a,b)=>{let t=0;for(let i=a;i<=b;i++)t+=T[m][i];return t},
+ R=CL.map(c=>{const pv=sm(c,0,S,E),pt=S>0?sm(c,0,P0,S-1):0;return{c,pv,pt,fm:sm(c,3,S,E),sh:sm(c,2,S,E),cd:pv/dd(S,E),pd:S>0?pt/dd(P0,S-1):0,a4:sm(c,0,Math.max(E-3,0),E),a0:sm(c,0,Math.max(E-11,0),Math.max(E-4,0))}}),
+ li=(s,t)=>'<li data-n="'+esc(s.c.n)+'"><span>'+esc(s.c.n)+'</span><span class="mu">'+t+'</span></li>',bx=(h,a)=>'<div><b>'+h+'</b><ul>'+(a.length?a.join(''):'<li><span class="mu">無</span></li>')+'</ul></div>',r1=x=>(Math.round(x*10)/10).toLocaleString(),
+ hi=R.filter(s=>s.pv>=100&&s.fm<s.pv*.1).sort((a,b)=>b.pv-a.pv).slice(0,8).map(s=>li(s,'瀏覽 '+fmt(s.pv)+'｜表單 '+fmt(s.fm)+'（每百次 '+r1(s.fm/s.pv*100)+'）')),
+ tp=R.filter(s=>s.pv>=100).sort((a,b)=>b.fm/b.pv-a.fm/a.pv).slice(0,6).map(s=>li(s,'瀏覽 '+fmt(s.pv)+'｜表單 '+fmt(s.fm)+'（每百次 '+Math.round(s.fm/s.pv*100)+'）')),
+ dn=R.filter(s=>s.pt>=100&&s.cd<s.pd*.7).sort((a,b)=>(b.pd-b.cd)-(a.pd-a.cd)).slice(0,8).map(s=>li(s,'日均 '+r1(s.pd)+' → '+r1(s.cd)+'（'+fp(pct(s.cd,s.pd))+'）')),
+ up=R.filter(s=>s.pt>=100&&s.cd>s.pd*1.3).sort((a,b)=>(b.cd-b.pd)-(a.cd-a.pd)).slice(0,6).map(s=>li(s,'日均 '+r1(s.pd)+' → '+r1(s.cd)+'（'+fp(pct(s.cd,s.pd))+'）')),
+ dk=R.filter(s=>s.a0>0&&s.a4==0).slice(0,10).map(s=>li(s,'前期瀏覽 '+fmt(s.a0)+'，近4週 0')),ts2=R.reduce((t,s)=>t+s.sh,0),
+ sh=[...R].sort((a,b)=>b.sh-a.sh).slice(0,5).map(s=>li(s,'分享 '+fmt(s.sh)+'（佔 '+Math.round(s.sh/(ts2||1)*100)+'%）')),
+ cv=(m,a,b)=>sT(m,a,b)/(sT(0,a,b)||1)*100;
+ $('#dgn').textContent='統計區間 '+dy(ts[S][0])+' ~ '+dy(ts[E][1])+'；整體每百次瀏覽的表單 '+r1(cv(3,S,E))+'、連結點擊 '+r1(cv(4,S,E))+(S>0?'（前 8 週：表單 '+r1(cv(3,P0,S-1))+'、點擊 '+r1(cv(4,P0,S-1))+'）':'')+'。瀏覽未滿 100 次的據點不納入比較；表單率超過 100，代表表單可能不經頁面瀏覽，請確認統計定義。';
+ $('#dg').innerHTML=bx('高瀏覽、低表單（每百次瀏覽少於 10 張）',hi)+bx('表單轉換最高',tp)+bx('瀏覽明顯下滑（日均比前 8 週少 30% 以上）',dn)+bx('瀏覽明顯成長（日均比前 8 週多 30% 以上）',up)+bx('近 4 週歸零（之前有瀏覽）',dk)+bx('分享次數前 5 名',sh)}
 function rowStats(c){const a=c.d[st.m],cur=ag(a,[L]),pv=ag(a,[L-1]),c4=ag(a,last(4)),p4=ag(a,prv(4));const ly=yoM(a,L),[ra,rb]=rng(),n=rb-ra+1,ix=[],px=[];for(let i=ra;i<=rb;i++)ix.push(i);for(let i=ra-n;i<ra;i++)px.push(i);const rc=ag(a,ix),rp=ra-n>=0?ag(a,px):null,ry=yoA(a,ix);return{c,cur,pv,w:pct(cur,pv),ly,yg:pct(cur,ly),c4,p4,g:pct(c4,p4),dl:c4-p4,rc,rp,rw:pct(rc,rp),ry,ryg:pct(rc,ry)}}
 function kpis(){$('#kp').innerHTML=MS.map((n,m)=>{const a=T[m],cu=ag(a,[L]),pv=ag(a,[L-1]),w=pct(cu,pv),ly=yoM(a,L),y=pct(cu,ly),s1=ss(m,[L]),ys=pct(s1[0],s1[1]),c4=ag(a,last(4)),p4=ag(a,prv(4)),g=pct(c4,p4),l4=yoA(a,last(4)),y4=pct(c4,l4);const rw=(t,v,p,x)=>`<div class="r"><span>${t} ${v==null?'—':fmt(v)}</span><i class="${cl(p)}">${fp(p)}${x||''}</i></div>`;
  return`<div class="k ${m==st.m?'on':''}" data-m="${m}"><div class="mu">${n}・${unit()}</div><b>${fmt(cu)}</b><div class="mu" style="margin-bottom:4px">所選週 ${rgi(L)}</div>${rw('上週 '+rgi(L-1),pv,w)}${rw('去年同期 '+rgi(L,364),ly,y)}<div class="r" title="只比較去年同期就有瀏覽數據的據點，排除今年新開據點的影響"><span>└ 同店*</span><i class="${cl(ys)}">${fp(ys)}</i></div></div>`}).join('')}
@@ -125,7 +138,7 @@ function table(){rcui();const cols=[['n','據點'],['r','區域'],['rc','區間�
 function render(){$('#mode').textContent=st.mode=='day'?'顯示：日均（校正不足7天的週）':'顯示：週總量（原始數字）';$('#clr').hidden=!st.club;
  $('#meta').textContent=`資料期間 ${W[0][0]} ~ ${W[W.length-1][1]}・${W.length} 週・${CL.length} 家據點`;
  const rs=['',...new Set(CL.map(c=>c.r))];$('#rgs').innerHTML=rs.map(r=>`<option value="${r}" ${r==st.reg?'selected':''}>${r||'全部區域'}</option>`).join('');
- banner();kpis();charts();monthly();insights();table()}
+ banner();kpis();charts();monthly();insights();diag();table()}
 function pick(n){st.club=CL.find(c=>c.n==n)||null;render();scrollTo({top:0,behavior:'smooth'})}
 document.addEventListener('click',e=>{const k=e.target.closest('.k');if(k){st.m=+k.dataset.m;render();return}const t=e.target.closest('#th th');if(t){const x=t.dataset.k;st.sd=st.sk==x?-st.sd:(x=='n'||x=='r'?1:-1);st.sk=x;table();return}const r=e.target.closest('tr[data-n],li[data-n]');if(r)pick(r.dataset.n)});
 $('#mode').onclick=()=>{st.mode=st.mode=='day'?'wk':'day';render()};$('#rg').onchange=e=>{st.range=+e.target.value;charts()};$('#clr').onclick=()=>{st.club=null;render()};
